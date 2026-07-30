@@ -84,6 +84,8 @@ Filesystem::Filesystem(Limits limits)
       directories_(limits), journal_(limits) {}
 
 Filesystem::~Filesystem() = default;
+Filesystem::Filesystem(Filesystem &&) noexcept = default;
+Filesystem &Filesystem::operator=(Filesystem &&) noexcept = default;
 
 bool Filesystem::format(const FormatOptions &options, Error &error) {
   error.clear();
@@ -1023,11 +1025,52 @@ bool Filesystem::checkpoint(Error &error) {
 }
 
 uint64_t Filesystem::invariant_hash() const {
-  Error error;
-  auto image = serialize(error);
-  if (error)
-    return 0;
-  return hash64(image.data(), image.size());
+  uint64_t hash = hash64(device_.bytes().data(), device_.bytes().size());
+  auto absorb = [&](const uint8_t *data, size_t size) {
+    for (size_t index = 0; index < size; ++index) {
+      hash ^= data[index];
+      hash *= 1099511628211ull;
+    }
+  };
+  auto absorb64 = [&](uint64_t value) {
+    uint8_t bytes[8];
+    for (unsigned shift = 0; shift < 64; shift += 8)
+      bytes[shift / 8] = static_cast<uint8_t>(value >> shift);
+    absorb(bytes, sizeof(bytes));
+  };
+  for (const auto &item : inodes_.all()) {
+    const Inode &inode = item.second;
+    absorb64(inode.identifier);
+    absorb64(static_cast<uint8_t>(inode.type));
+    absorb64(inode.mode);
+    absorb64(inode.link_count);
+    absorb64(inode.size);
+    absorb64(inode.allocated_bytes);
+    for (const Extent &extent : inode.extents) {
+      absorb64(extent.logical_block);
+      absorb64(extent.physical_block);
+      absorb64(extent.block_count);
+      absorb64(extent.sparse ? 1 : 0);
+    }
+    absorb(reinterpret_cast<const uint8_t *>(inode.symlink_target.data()),
+           inode.symlink_target.size());
+    for (const auto &attribute : inode.attributes) {
+      absorb(reinterpret_cast<const uint8_t *>(attribute.name.data()),
+             attribute.name.size());
+      absorb(attribute.value.data(), attribute.value.size());
+    }
+  }
+  for (const auto &directory : directories_.all()) {
+    absorb64(directory.first);
+    for (const DirectoryEntry &entry : directory.second) {
+      absorb64(entry.inode);
+      absorb64(static_cast<uint8_t>(entry.type));
+      absorb64(entry.deleted ? 1 : 0);
+      absorb(reinterpret_cast<const uint8_t *>(entry.name.data()),
+             entry.name.size());
+    }
+  }
+  return hash;
 }
 
 } // namespace blockforge

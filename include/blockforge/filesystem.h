@@ -455,6 +455,10 @@ class Filesystem {
 public:
   explicit Filesystem(Limits limits = {});
   ~Filesystem();
+  Filesystem(Filesystem &&) noexcept;
+  Filesystem &operator=(Filesystem &&) noexcept;
+  Filesystem(const Filesystem &) = delete;
+  Filesystem &operator=(const Filesystem &) = delete;
   bool format(const FormatOptions &options, Error &error);
   bool mount(const uint8_t *data, size_t size, const MountOptions &options,
              Error &error);

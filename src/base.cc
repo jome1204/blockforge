@@ -124,7 +124,8 @@ bool Superblock::validate(uint64_t image_size, const Limits &limits,
       expected > limits.max_image_bytes || expected != image_size)
     return internal::fail(error, ErrorCode::overflow, 16,
                           "block count and image length are inconsistent");
-  if (inode_count > limits.max_inodes || free_inode_count > inode_count)
+  if (inode_count > limits.max_inodes ||
+      free_inode_count > limits.max_inodes - inode_count)
     return internal::fail(error, ErrorCode::resource_limit, 24,
                           "inode counts are inconsistent");
   if (free_block_count > block_count)
