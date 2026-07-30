@@ -1,0 +1,7 @@
+language: c++
+main_repo: https://github.com/jome1204/blockforge
+fuzzing_engines:
+  - libfuzzer
+sanitizers:
+  - address
+  - undefined
