@@ -18,6 +18,23 @@ bool DirectoryTable::initialize_root(uint64_t root_inode, Error &error) {
   return true;
 }
 
+bool DirectoryTable::load(uint64_t inode,
+                          std::vector<DirectoryEntry> entries,
+                          Error &error) {
+  error.clear();
+  if (inode == 0 || directories_.count(inode) != 0)
+    return internal::fail(error, ErrorCode::invalid_directory, inode,
+                          "loaded directory identifier is invalid");
+  if (entries.size() > limits_.max_directory_entries)
+    return internal::fail(error, ErrorCode::resource_limit, entries.size(),
+                          "loaded directory exceeds entry limit");
+  for (const DirectoryEntry &entry : entries)
+    if (!entry.validate(limits_, error))
+      return false;
+  directories_.emplace(inode, std::move(entries));
+  return true;
+}
+
 bool DirectoryTable::create(uint64_t inode, uint64_t parent, Error &error) {
   error.clear();
   if (inode == 0 || parent == 0)

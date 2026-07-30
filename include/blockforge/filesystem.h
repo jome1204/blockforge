@@ -270,6 +270,8 @@ class DirectoryTable {
 public:
   explicit DirectoryTable(Limits limits = {});
   bool initialize_root(uint64_t root_inode, Error &error);
+  bool load(uint64_t inode, std::vector<DirectoryEntry> entries,
+            Error &error);
   bool create(uint64_t inode, uint64_t parent, Error &error);
   bool erase_directory(uint64_t inode, Error &error);
   bool add(uint64_t directory, DirectoryEntry entry, Error &error);
@@ -452,6 +454,7 @@ struct ReadResult {
 class Filesystem {
 public:
   explicit Filesystem(Limits limits = {});
+  ~Filesystem();
   bool format(const FormatOptions &options, Error &error);
   bool mount(const uint8_t *data, size_t size, const MountOptions &options,
              Error &error);
