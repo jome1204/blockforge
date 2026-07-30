@@ -1,0 +1,12 @@
+build/
+build-*/
+out/
+*.o
+*.obj
+*.exe
+*.pdb
+*.class
+__pycache__/
+*.pyc
+.idea/
+.vscode/
